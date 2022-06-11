@@ -19,6 +19,7 @@
 
 teleporter = {}
 teleporter.version = 1.07
+local teleporter_pad_formspec = "size[8,1]field[0,0;8,1;text;;${text}]" --"hack:sign_text_input"
 
 -- config.lua contains configuration parameters
 dofile(minetest.get_modpath("teleporter").."/config.lua")
@@ -26,9 +27,9 @@ dofile(minetest.get_modpath("teleporter").."/config.lua")
 minetest.register_craft({
 	output = 'teleporter:teleporter_pad',
 	recipe = {
-                {'moreores:copper_ingot', 'default:glass', 'moreores:copper_ingot'},
-                {'moreores:copper_ingot', 'moreores:gold_block', 'moreores:copper_ingot'},
-                {'moreores:copper_ingot', 'mesecons_powerplant:power_plant', 'moreores:copper_ingot'},
+                {'default:copper_ingot', 'default:glass', 'default:copper_ingot'},
+                {'default:copper_ingot', 'default:goldblock', 'default:copper_ingot'},
+                {'default:copper_ingot', 'mesecons_powerplant:power_plant', 'default:copper_ingot'},
         }
 })
 
@@ -56,8 +57,8 @@ minetest.register_node("teleporter:teleporter_pad", {
 		type = "wallmounted",
 	},
         on_construct = function(pos)
-                local meta = minetest.env:get_meta(pos)
-                meta:set_string("formspec", "hack:sign_text_input")
+                local meta = minetest.get_meta(pos)
+                meta:set_string("formspec", teleporter_pad_formspec)
                 meta:set_string("infotext", "\"Teleport to "..teleporter.default_coordinates.desc.."\"")
 		meta:set_string("text", teleporter.default_coordinates.x..","..
 			teleporter.default_coordinates.y..","..
@@ -69,22 +70,26 @@ minetest.register_node("teleporter:teleporter_pad", {
 		meta:set_float("z", teleporter.default_coordinates.z)
         end,
 	after_place_node = function(pos, placer)
-		local meta = minetest.env:get_meta(pos)
+                local meta = minetest.get_meta(pos)
 		local name = placer:get_player_name()
 		meta:set_string("owner", name)
 		
 		if teleporter.perms_to_build and not minetest.get_player_privs(name)["teleport"] then
 			minetest.chat_send_player(name, 'Teleporter:  Teleport privileges are required to build teleporters.')
-			minetest.env:remove_node(pos)
-			minetest.env:add_item(pos, 'teleporter:teleporter_pad')
+                        minetest.remove_node(pos)
+                        minetest.add_item(pos, 'teleporter:teleporter_pad')
 		else
 			meta:set_float("enabled", 1)
 		end
 
 	end,
         on_receive_fields = function(pos, formname, fields, sender)
-		local coords = teleporter.coordinates(fields.text)
-                local meta = minetest.env:get_meta(pos)
+                local meta = minetest.get_meta(pos)
+                if fields.text == nil then
+                    meta:set_string("formspec", teleporter_pad_formspec)
+                    return
+                end
+                local coords = teleporter.coordinates(fields.text)
 		local name = sender:get_player_name()
 		local privs = minetest.get_player_privs(name)
 
@@ -131,7 +136,7 @@ minetest.register_node("teleporter:teleporter_pad", {
         	end
 	end,
 	can_dig = function(pos,player)
-		local meta = minetest.env:get_meta(pos)
+                local meta = minetest.get_meta(pos)
 		local name = player:get_player_name()
 		local privs = minetest.get_player_privs(name)
 		if name == meta:get_string("owner") or privs["server"] then
@@ -145,7 +150,7 @@ teleporter.is_paired = function(coords)
 	for dx=-teleporter.pairing_check_radius,teleporter.pairing_check_radius do
 		for dy=-teleporter.pairing_check_radius,teleporter.pairing_check_radius do
 			for dz=-teleporter.pairing_check_radius,teleporter.pairing_check_radius do
-				local node = minetest.env:get_node({x=coords.x + dx, y=coords.y + dy, z=coords.z + dz})
+                                local node = minetest.get_node({x=coords.x + dx, y=coords.y + dy, z=coords.z + dz})
 				if node.name == 'teleporter:teleporter_pad' then
 					return true
 				end
@@ -184,14 +189,14 @@ minetest.register_abm(
 	interval = 1.0,
 	chance = 1,
 	action = function(pos, node, active_object_count, active_object_count_wider)
-		local objs = minetest.env:get_objects_inside_radius(pos, 1)
+                local objs = minetest.get_objects_inside_radius(pos, 1)
 		for k, player in pairs(objs) do
 			if player:get_player_name()~=nil then 
-				local meta = minetest.env:get_meta(pos)
+                                local meta = minetest.get_meta(pos)
 				if meta:get_float("enabled") > 0 then
 					local target_coords={x=meta:get_float("x"), y=meta:get_float("y"), z=meta:get_float("z")}
 					minetest.sound_play("teleporter_teleport", {pos = pos, gain = 1.0, max_hear_distance = 10,})
-					player:moveto(target_coords, false)
+                                        player:move_to(target_coords, false)
 					minetest.sound_play("teleporter_teleport", {pos = target_coords, gain = 1.0, max_hear_distance = 10,})
 				end
 			end

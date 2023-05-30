@@ -43,7 +43,7 @@ minetest.register_craft({
 })
 
 minetest.register_node("teleporter:teleporter_pad", {
-	tile_images = {teleporter.tile_image},
+	tiles = {teleporter.tile_image},
 	drawtype = "signlike",
 	paramtype = "light",
 	paramtype2 = "wallmounted",
